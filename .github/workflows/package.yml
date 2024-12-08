@@ -62,7 +62,7 @@ jobs:
         if: steps.check_new_tag.outcome == 'success'
         run: |
           # Configure the remote URL to use the token for authentication
-          git remote set-url origin https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/andi-74/pettracker-mirror.git
+          git remote set-url --push origin https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/andi-74/pettracker-mirror.git
           
           # Stage and commit the zip file
           git add PetTracker.zip
