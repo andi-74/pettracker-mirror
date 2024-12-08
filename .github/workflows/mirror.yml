@@ -25,7 +25,7 @@ jobs:
           git reset --hard origin/master
           
           # Preserve `.github/workflows/mirror.yml`
-          git checkout origin/main -- ':!**/.github/workflows/mirror.yml'
+          git checkout origin/master -- ':!**/.github/workflows/mirror.yml'
 
       # Step 3: Push to the Mirror
       - name: Push to Mirror Repo
