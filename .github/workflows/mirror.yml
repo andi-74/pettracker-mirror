@@ -14,17 +14,44 @@ jobs:
         run: |
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
-    
+
       # Step 1: Checkout Mirror Repo
-      - name: Checkout PetTracker Repo
+      - name: Checkout Mirror Repo
         run: |
-          git clone https://github.com/Jaliborc/PetTracker.git PetTracker
-          cd PetTracker
+          git clone https://github.com/andi-74/pettracker-mirror.git
+          cd pettracker-mirror
           git remote set-url --push origin https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/andi-74/pettracker-mirror.git
 
-      # Step 2: Sync with Source Repository
+      # Step 2: Get the latest release from PetTracker repo
+      - name: Get Latest Release from PetTracker
+        id: get_latest_release
+        run: |
+          latest_release=$(curl -s https://api.github.com/repos/Jaliborc/PetTracker/releases/latest | jq -r .tag_name)
+          echo "Latest release in PetTracker: $latest_release"
+          echo "latest_release=$latest_release" >> $GITHUB_ENV
+
+      # Step 3: Check if the latest release exists in the mirror repo
+      - name: Get Latest Release in Mirror Repo
+        id: get_mirror_release
+        run: |
+          cd pettracker-mirror
+          git fetch --tags
+          mirror_release=$(git tag -l | grep "$latest_release")
+          echo "Latest release in mirror repo: $mirror_release"
+          echo "mirror_release=$mirror_release" >> $GITHUB_ENV
+
+      # Step 4: Skip mirroring if the release already exists in the mirror repo
+      - name: Skip Mirror if Release Exists
+        if: ${{ env.latest_release == env.mirror_release }}
+        run: |
+          echo "Release ${{ env.latest_release }} already exists in the mirror repo. Skipping the mirroring process."
+          exit 0
+
+      # Step 5: Sync with Source Repository (only if new release is not found)
       - name: Sync Changes
         run: |
+          cd pettracker-mirror
+          git clone https://github.com/Jaliborc/PetTracker.git PetTracker
           cd PetTracker
           git fetch origin --prune
           git reset --hard origin/master  # Sync with the source's 'master' branch
@@ -32,8 +59,8 @@ jobs:
           # Preserve `.github/workflows/mirror.yml`
           git checkout origin/master -- ':!**/.github/workflows/mirror.yml'
 
-      # Step 3: Push to Mirror Repo
+      # Step 6: Push to Mirror Repo (only if new release is not found)
       - name: Push to Mirror Repo
         run: |
-          cd PetTracker
+          cd pettracker-mirror
           git diff --exit-code || (git add . && git commit -m "Update from source repo" && git push origin master --force)
