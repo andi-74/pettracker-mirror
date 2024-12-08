@@ -91,5 +91,8 @@ jobs:
         if: ${{ env.new_release != '0' }}  # Run if there's a new release
         run: |
           echo "Creating release for tag ${{ env.new_release }}"
+          echo ${{ secrets.GITHUB_TOKEN }} | gh auth login --with-token
+          gh release create "${{ env.new_release }}" --title "Release ${{ env.new_release }}" --notes "Release for tag ${{ env.new_release }}" --repo andi-74/pettracker-mirror
+
           gh auth login --with-token < ${{ secrets.GITHUB_TOKEN }}
           gh release create "${{ env.new_release }}" --title "Release ${{ env.new_release }}" --notes "Release for tag ${{ env.new_release }}" --repo andi-74/pettracker-mirror
