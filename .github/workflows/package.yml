@@ -1,0 +1,41 @@
+name: Package Addon
+
+on:
+  push:
+    branches:
+      - master  # Adjust the branch name if needed
+  workflow_dispatch:  # Allow manual runs
+
+jobs:
+  package-addon:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout PetTracker Repo
+        uses: actions/checkout@v3
+
+      - name: Set up Git user
+        run: |
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+
+      # Step 1: Package WoW Addon into a .zip file
+      - name: Package WoW Addon
+        run: |
+          # Ensure you are in the directory where the addon is located (adjust path if necessary)
+          cd PetTracker
+
+          # Create the WoW addon package as a .zip file
+          zip -r PetTracker.zip PetTracker/*
+
+      # Step 2: Push .zip file to Mirror Repository
+      - name: Push Addon Package to Mirror Repo
+        run: |
+          cd PetTracker
+
+          # Add and commit the .zip file
+          git add PetTracker.zip
+          git commit -m "Add new WoW addon package" || echo "No changes to commit"
+
+          # Push to the mirror repository (adjust the target branch if necessary)
+          git push https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/andi-74/pettracker-mirror.git master
