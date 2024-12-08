@@ -61,6 +61,13 @@ jobs:
       - name: Push Addon Package to Mirror Repo
         if: steps.check_new_tag.outcome == 'success'
         run: |
+          # Configure the remote URL to use the token for authentication
+          git remote set-url origin https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/andi-74/pettracker-mirror.git
+          
+          # Stage and commit the zip file
           git add PetTracker.zip
           git commit -m "Add new WoW addon package for tag ${{ env.latest_tag }}" || echo "No changes to commit"
-          git push https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/andi-74/pettracker-mirror.git master
+          
+          # Push the changes to the mirror repo
+          git push origin master
+
