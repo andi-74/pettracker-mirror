@@ -43,15 +43,21 @@ jobs:
           echo "Mirror tags: $mirror_tags"
           echo "mirror_tags=$mirror_tags" >> $GITHUB_ENV
 
-      # Step 4: Skip if the tag already exists in the mirror repo
-      - name: Skip if Tag Exists in Mirror Repo
-        if: ${{ contains(env.mirror_tags, env.latest_tag) }}
+      # Step 4: Check if New Release Exists in Mirror Repo and Set `new_release`
+      - name: Check if New Release Exists in Mirror Repo
+        id: check_new_release
         run: |
-          echo "Tag ${{ env.latest_tag }} already exists in the mirror repo. Skipping the mirroring process."
-          exit 0
+          if [[ " ${mirror_tags[@]} " =~ " ${latest_tag} " ]]; then
+            echo "Tag $latest_tag already exists in the mirror repo. No new release."
+            echo "new_release=0" >> $GITHUB_ENV  # No new release
+          else
+            echo "New tag detected: $latest_tag"
+            echo "new_release=${latest_tag}" >> $GITHUB_ENV  # Set new release to latest_tag
+          fi
 
-      # Step 5: Sync with PetTracker and update mirror repo
+      # Step 5: Sync with PetTracker and update mirror repo if new release
       - name: Sync Changes from PetTracker
+        if: ${{ env.new_release != '0' }}  # Run if there's a new release
         run: |
           cd pettracker-mirror
           git clone https://github.com/Jaliborc/PetTracker.git PetTracker
@@ -62,16 +68,17 @@ jobs:
           # Preserve `.github/workflows/mirror.yml`
           git checkout origin/master -- ':!**/.github/workflows/mirror.yml'
 
-      # Step 6: Push to Mirror Repo
+      # Step 6: Push to Mirror Repo if new release
       - name: Push to Mirror Repo
+        if: ${{ env.new_release != '0' }}  # Run if there's a new release
         run: |
           cd pettracker-mirror
           git diff --exit-code || (git add . && git commit -m "Update from source repo" && git push origin master --force)
 
-      # Step 7: Create GitHub Release for the Latest Tag
+      # Step 7: Create GitHub Release for the Latest Tag if new release
       - name: Create GitHub Release for the Latest Tag
-        if: ${{ !contains(env.mirror_tags, env.latest_tag) }}
+        if: ${{ env.new_release != '0' }}  # Run if there's a new release
         run: |
-          echo "Creating release for tag ${{ env.latest_tag }}"
+          echo "Creating release for tag ${{ env.new_release }}"
           gh auth login --with-token < ${{ secrets.GITHUB_TOKEN }}
-          gh release create "${{ env.latest_tag }}" --title "Release ${{ env.latest_tag }}" --notes "Release for tag ${{ env.latest_tag }}" --repo andi-74/pettracker-mirror
+          gh release create "${{ env.new_release }}" --title "Release ${{ env.new_release }}" --notes "Release for tag ${{ env.new_release }}" --repo andi-74/pettracker-mirror
