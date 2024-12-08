@@ -10,6 +10,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Set up Git user
+        run: |
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+    
       # Step 1: Checkout Mirror Repo
       - name: Checkout PetTracker Repo
         run: |
