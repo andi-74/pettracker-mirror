@@ -27,8 +27,9 @@ jobs:
         id: get_latest_tag
         run: |
           latest_tag=$(git ls-remote --tags https://github.com/Jaliborc/PetTracker.git | sort -t/ -k3 -V | tail -n 1 | awk -F/ '{print $3}')
+          latest_tag=$(echo "$latest_tag" | tr -d '[:space:]')  # Remove any spaces or newlines
           echo "Latest tag in PetTracker: $latest_tag"
-          echo "latest_tag=$latest_tag" >> $GITHUB_ENV
+          echo "latest_tag=$latest_tag" >> $GITHUB_ENV  # This correctly sets the environment variable
 
       # Step 3: Get tags from the Mirror Repo
       - name: Get Mirror Repo Tags
