@@ -14,7 +14,7 @@ jobs:
         run: |
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
-
+    
       # Step 1: Checkout Mirror Repo
       - name: Checkout Mirror Repo
         run: |
@@ -22,33 +22,33 @@ jobs:
           cd pettracker-mirror
           git remote set-url --push origin https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/andi-74/pettracker-mirror.git
 
-      # Step 2: Get the latest release from PetTracker repo
-      - name: Get Latest Release from PetTracker
-        id: get_latest_release
+      # Step 2: Get the latest tag from PetTracker
+      - name: Get Latest Tag from PetTracker
+        id: get_latest_tag
         run: |
-          latest_release=$(curl -s https://api.github.com/repos/Jaliborc/PetTracker/releases/latest | jq -r .tag_name)
-          echo "Latest release in PetTracker: $latest_release"
-          echo "latest_release=$latest_release" >> $GITHUB_ENV
+          latest_tag=$(git ls-remote --tags https://github.com/Jaliborc/PetTracker.git | sort -t/ -k3 -V | tail -n 1 | awk -F/ '{print $3}')
+          echo "Latest tag in PetTracker: $latest_tag"
+          echo "latest_tag=$latest_tag" >> $GITHUB_ENV
 
-      # Step 3: Check if the latest release exists in the mirror repo
-      - name: Get Latest Release in Mirror Repo
-        id: get_mirror_release
+      # Step 3: Get tags from the Mirror Repo
+      - name: Get Mirror Repo Tags
+        id: get_mirror_tags
         run: |
           cd pettracker-mirror
           git fetch --tags
-          mirror_release=$(git tag -l | grep "$latest_release")
-          echo "Latest release in mirror repo: $mirror_release"
-          echo "mirror_release=$mirror_release" >> $GITHUB_ENV
+          mirror_tags=$(git tag -l)
+          echo "Tags in mirror repo: $mirror_tags"
+          echo "mirror_tags=$mirror_tags" >> $GITHUB_ENV
 
-      # Step 4: Skip mirroring if the release already exists in the mirror repo
-      - name: Skip Mirror if Release Exists
-        if: ${{ env.latest_release == env.mirror_release }}
+      # Step 4: Skip if the tag already exists in the mirror repo
+      - name: Skip if Tag Exists in Mirror Repo
+        if: ${{ contains(env.mirror_tags, env.latest_tag) }}
         run: |
-          echo "Release ${{ env.latest_release }} already exists in the mirror repo. Skipping the mirroring process."
+          echo "Tag ${{ env.latest_tag }} already exists in the mirror repo. Skipping the mirroring process."
           exit 0
 
-      # Step 5: Sync with Source Repository (only if new release is not found)
-      - name: Sync Changes
+      # Step 5: Sync with PetTracker and update mirror repo
+      - name: Sync Changes from PetTracker
         run: |
           cd pettracker-mirror
           git clone https://github.com/Jaliborc/PetTracker.git PetTracker
@@ -59,8 +59,16 @@ jobs:
           # Preserve `.github/workflows/mirror.yml`
           git checkout origin/master -- ':!**/.github/workflows/mirror.yml'
 
-      # Step 6: Push to Mirror Repo (only if new release is not found)
+      # Step 6: Push to Mirror Repo
       - name: Push to Mirror Repo
         run: |
           cd pettracker-mirror
           git diff --exit-code || (git add . && git commit -m "Update from source repo" && git push origin master --force)
+
+      # Step 7: Create GitHub Release for the Latest Tag
+      - name: Create GitHub Release for the Latest Tag
+        if: ${{ !contains(env.mirror_tags, env.latest_tag) }}
+        run: |
+          echo "Creating release for tag ${{ env.latest_tag }}"
+          gh auth login --with-token < ${{ secrets.GITHUB_TOKEN }}
+          gh release create ${{ env.latest_tag }} --title "Release ${{ env.latest_tag }}" --notes "Release for tag ${{ env.latest_tag }}" --repo andi-74/pettracker-mirror
