@@ -22,7 +22,7 @@ jobs:
         run: |
           cd PetTracker
           git fetch origin --prune
-          git reset --hard origin/main
+          git reset --hard origin/master
           
           # Preserve `.github/workflows/mirror.yml`
           git checkout origin/main -- ':!**/.github/workflows/mirror.yml'
