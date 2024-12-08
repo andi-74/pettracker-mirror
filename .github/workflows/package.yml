@@ -18,20 +18,27 @@ jobs:
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
 
-      # Step 1: Fetch tags from PetTracker
+      # Step 1: Clone PetTracker repo
+      - name: Clone PetTracker Repo
+        run: |
+          git clone https://github.com/Jaliborc/PetTracker.git
+          
+      # Step 2: Fetch tags from PetTracker
       - name: Fetch tags from PetTracker
         run: |
-          git fetch --tags https://github.com/Jaliborc/PetTracker.git
+          cd PetTracker
+          git fetch --tags
 
-      # Step 2: Get the latest tag from PetTracker
+      # Step 3: Get the latest tag from PetTracker
       - name: Get the latest tag from PetTracker
         id: get_latest_tag
         run: |
+          cd PetTracker
           latest_tag=$(git describe --tags $(git rev-list --tags --max-count=1) --abbrev=0)
           echo "Latest tag in PetTracker: $latest_tag"
           echo "latest_tag=$latest_tag" >> $GITHUB_ENV
 
-      # Step 3: Check if new release tag exists
+      # Step 4: Check if new release tag exists
       - name: Check if new release tag exists
         id: check_new_tag
         run: |
@@ -43,18 +50,17 @@ jobs:
             echo "LAST_TAG=$latest_tag" >> $GITHUB_ENV
           fi
 
-      # Step 4: Package WoW Addon if new tag
+      # Step 5: Package WoW Addon if new tag
       - name: Package WoW Addon
         if: steps.check_new_tag.outcome == 'success'
         run: |
           cd PetTracker
-          zip -r PetTracker.zip PetTracker/*
+          zip -r ../PetTracker.zip .  # Creates a zip file in the parent directory
 
-      # Step 5: Push the .zip file to Mirror Repo
+      # Step 6: Push the .zip file to Mirror Repo
       - name: Push Addon Package to Mirror Repo
         if: steps.check_new_tag.outcome == 'success'
         run: |
-          cd PetTracker
           git add PetTracker.zip
           git commit -m "Add new WoW addon package for tag ${{ env.latest_tag }}" || echo "No changes to commit"
           git push https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/andi-74/pettracker-mirror.git master
