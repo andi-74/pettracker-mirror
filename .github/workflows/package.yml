@@ -22,6 +22,11 @@ jobs:
       - name: Clone PetTracker Repo
         run: |
           git clone https://github.com/Jaliborc/PetTracker.git
+
+      - name: Set Remote URL for Push
+        run: |
+          cd PetTracker
+          git remote set-url --push origin https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/andi-74/pettracker-mirror.git
           
       # Step 2: Fetch tags from PetTracker
       - name: Fetch tags from PetTracker
@@ -60,11 +65,14 @@ jobs:
       # Step 6: Push the .zip file to Mirror Repo
       - name: Push Addon Package to Mirror Repo
         if: steps.check_new_tag.outcome == 'success'
-        run: |        
-          # Stage and commit the zip file
-          git add PetTracker.zip
-          git commit -m "Add new WoW addon package for tag ${{ env.latest_tag }}" || echo "No changes to commit"
-          
-          # Push the changes to the mirror repo
-          git push https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/andi-74/pettracker-mirror.git master
+        run: |
+          cd PetTracker
+          git diff --exit-code || (
+            # Stage and commit the zip file
+            git add PetTracker.zip
+            git commit -m "Add new WoW addon package for tag ${{ env.latest_tag }}" || echo "No changes to commit"
+            
+            # Push the changes to the mirror repo
+            git push master
+          )
 
