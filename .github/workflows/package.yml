@@ -1,17 +1,15 @@
 name: Package Addon
 
 on:
-  push:
-    branches:
-      - master  # Adjust the branch name if needed
-  workflow_dispatch:  # Allow manual runs
+  repository_dispatch:
+    types: [new-release]  # Custom event type
 
 jobs:
   package-addon:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout PetTracker Repo
+      - name: Checkout Mirror Repo
         uses: actions/checkout@v3
 
       - name: Set up Git user
@@ -19,23 +17,43 @@ jobs:
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
 
-      # Step 1: Package WoW Addon into a .zip file
-      - name: Package WoW Addon
+      # Step 1: Fetch tags from PetTracker
+      - name: Fetch tags from PetTracker
         run: |
-          # Ensure you are in the directory where the addon is located (adjust path if necessary)
-          cd PetTracker
+          git fetch --tags https://github.com/Jaliborc/PetTracker.git
 
-          # Create the WoW addon package as a .zip file
+      # Step 2: Get the latest tag
+      - name: Get the latest tag from PetTracker
+        id: get_latest_tag
+        run: |
+          latest_tag=$(git describe --tags $(git rev-list --tags --max-count=1) --abbrev=0)
+          echo "Latest tag in PetTracker: $latest_tag"
+          echo "latest_tag=$latest_tag" >> $GITHUB_ENV
+
+      # Step 3: Check if new tag exists
+      - name: Check if new release tag exists
+        id: check_new_tag
+        run: |
+          if [ "$latest_tag" == "${{ secrets.LAST_TAG }}" ]; then
+            echo "No new tag, skipping package creation."
+            exit 0
+          else
+            echo "New tag detected: $latest_tag"
+            echo "LAST_TAG=$latest_tag" >> $GITHUB_ENV
+          fi
+
+      # Step 4: Package WoW Addon if new tag
+      - name: Package WoW Addon
+        if: steps.check_new_tag.outcome == 'success'
+        run: |
+          cd PetTracker
           zip -r PetTracker.zip PetTracker/*
 
-      # Step 2: Push .zip file to Mirror Repository
+      # Step 5: Push the .zip file to Mirror Repo
       - name: Push Addon Package to Mirror Repo
+        if: steps.check_new_tag.outcome == 'success'
         run: |
           cd PetTracker
-
-          # Add and commit the .zip file
           git add PetTracker.zip
-          git commit -m "Add new WoW addon package" || echo "No changes to commit"
-
-          # Push to the mirror repository (adjust the target branch if necessary)
+          git commit -m "Add new WoW addon package for tag ${{ env.latest_tag }}" || echo "No changes to commit"
           git push https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/andi-74/pettracker-mirror.git master
