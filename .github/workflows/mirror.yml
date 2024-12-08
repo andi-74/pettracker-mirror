@@ -37,8 +37,8 @@ jobs:
         run: |
           cd pettracker-mirror
           git fetch --tags
-          mirror_tags=$(git tag -l)
-          echo "Tags in mirror repo: $mirror_tags"
+          mirror_tags=$(git tag -l | tr '\n' ' ')  # Convert the list of tags to a single space-separated string
+          echo "Mirror tags: $mirror_tags"
           echo "mirror_tags=$mirror_tags" >> $GITHUB_ENV
 
       # Step 4: Skip if the tag already exists in the mirror repo
@@ -72,4 +72,4 @@ jobs:
         run: |
           echo "Creating release for tag ${{ env.latest_tag }}"
           gh auth login --with-token < ${{ secrets.GITHUB_TOKEN }}
-          gh release create ${{ env.latest_tag }} --title "Release ${{ env.latest_tag }}" --notes "Release for tag ${{ env.latest_tag }}" --repo andi-74/pettracker-mirror
+          gh release create "${{ env.latest_tag }}" --title "Release ${{ env.latest_tag }}" --notes "Release for tag ${{ env.latest_tag }}" --repo andi-74/pettracker-mirror
