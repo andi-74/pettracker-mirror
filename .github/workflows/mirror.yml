@@ -75,7 +75,18 @@ jobs:
           cd pettracker-mirror
           git diff --exit-code || (git add . && git commit -m "Update from source repo" && git push origin master --force)
 
-      # Step 7: Create GitHub Release for the Latest Tag if new release
+      # Step 7: Check if there are no releases on the mirror repo
+      - name: Check if Mirror Repo Has No Releases
+        id: check_no_releases
+        run: |
+          # Use GitHub API to list releases and check if any exist
+          release_count=$(gh release list --repo andi-74/pettracker-mirror | wc -l)
+          if [ "$release_count" -eq 0 ]; then
+            echo "No releases found in the mirror repo. Creating release for the first tag: ${{ env.latest_tag }}"
+            echo "new_release=${{ env.latest_tag }}" >> $GITHUB_ENV  # Set new_release to the first tag
+          fi
+
+      # Step 8: Create GitHub Release for the Latest Tag if new release
       - name: Create GitHub Release for the Latest Tag
         if: ${{ env.new_release != '0' }}  # Run if there's a new release
         run: |
