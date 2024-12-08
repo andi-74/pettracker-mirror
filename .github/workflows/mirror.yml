@@ -27,15 +27,13 @@ jobs:
         run: |
           cd PetTracker
           git fetch origin --prune
-          git reset --hard origin/master
-          
+          git reset --hard origin/master  # Sync with the source's 'master' branch
+
           # Preserve `.github/workflows/mirror.yml`
           git checkout origin/master -- ':!**/.github/workflows/mirror.yml'
 
-      # Step 3: Push to the Mirror
+      # Step 3: Push to Mirror Repo
       - name: Push to Mirror Repo
         run: |
           cd PetTracker
-          git add .
-          git commit -m "Update from source repo" || echo "No changes to commit"
-          git push origin main --force
+          git diff --exit-code || (git add . && git commit -m "Update from source repo" && git push origin master --force)
