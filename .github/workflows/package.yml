@@ -1,8 +1,9 @@
 name: Package Addon
 
 on:
-  repository_dispatch:
-    types: [new-release]  # Custom event type
+  schedule:
+    - cron: "0 1 * * *"  # Run once a day at 1am
+  workflow_dispatch:  # Allow manual runs
 
 jobs:
   package-addon:
@@ -22,7 +23,7 @@ jobs:
         run: |
           git fetch --tags https://github.com/Jaliborc/PetTracker.git
 
-      # Step 2: Get the latest tag
+      # Step 2: Get the latest tag from PetTracker
       - name: Get the latest tag from PetTracker
         id: get_latest_tag
         run: |
@@ -30,7 +31,7 @@ jobs:
           echo "Latest tag in PetTracker: $latest_tag"
           echo "latest_tag=$latest_tag" >> $GITHUB_ENV
 
-      # Step 3: Check if new tag exists
+      # Step 3: Check if new release tag exists
       - name: Check if new release tag exists
         id: check_new_tag
         run: |
