@@ -89,11 +89,13 @@ jobs:
         run: |
           echo "Creating release for tag ${{ env.new_release }}"
       
-          # Create an archive including only the specified folders and files
+          # Create an archive with a custom folder name
           cd pettracker-mirror
-          zip -r "/tmp/pettracker-${{ env.new_release }}.zip" \
-            addons art libs localization PetTracker-Mainline.toc \
-            -x "*/.github/*"
+          mkdir -p /tmp/PetTracker
+          cp -r addons art libs localization PetTracker-Mainline.toc /tmp/PetTracker/
+      
+          cd /tmp
+          zip -r "PetTracker-${{ env.new_release }}.zip" PetTracker
       
           # Use GitHub CLI with the GITHUB_TOKEN
           gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
@@ -101,4 +103,4 @@ jobs:
             --title "Release ${{ env.new_release }}" \
             --notes "Release for tag ${{ env.new_release }}" \
             --repo andi-74/pettracker-mirror \
-            /tmp/pettracker-${{ env.new_release }}.zip
+            "/tmp/PetTracker-${{ env.new_release }}.zip"
