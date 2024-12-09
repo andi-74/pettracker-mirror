@@ -91,9 +91,6 @@ jobs:
         if: ${{ env.new_release != '0' }}  # Run if there's a new release
         run: |
           echo "Checking if release for tag ${{ env.new_release }} already exists"
-          
-          # Remove any existing GH_TOKEN from environment to avoid conflicts
-          unset GH_TOKEN
       
           # Check if the release already exists using GitHub CLI
           release_exists=$(gh release list --repo andi-74/pettracker-mirror --json tagName --jq ".[] | select(.tagName == \"${{ env.new_release }}\")")
