@@ -5,9 +5,6 @@ on:
     - cron: "0 0 * * *"  # Run daily at midnight
   workflow_dispatch:  # Allow manual runs
 
-env:
-  GH_TOKEN: ${{ github.token }}
-
 jobs:
   mirror:
     runs-on: ubuntu-latest
@@ -30,11 +27,9 @@ jobs:
         id: get_latest_tag
         run: |
           latest_tag=$(git ls-remote --tags https://github.com/Jaliborc/PetTracker.git | sort -t/ -k3 -V | tail -n 1 | awk -F/ '{print $3}')
-          # Remove the extra characters (^{}) from the tag
           latest_tag=$(echo "$latest_tag" | sed 's/\^{}//g')
           latest_tag=$(echo "$latest_tag" | tr -d '[:space:]')  # Remove any spaces or newlines
-          echo "Latest tag in PetTracker: $latest_tag"
-          echo "latest_tag=$latest_tag" >> $GITHUB_ENV  # This correctly sets the environment variable
+          echo "latest_tag=$latest_tag" >> $GITHUB_ENV
 
       # Step 3: Get tags from the Mirror Repo
       - name: Get Mirror Repo Tags
@@ -42,42 +37,41 @@ jobs:
         run: |
           cd pettracker-mirror
           git fetch --tags
-          mirror_tags=$(git tag -l | tr '\n' ' ')  # Convert the list of tags to a single space-separated string
-          echo "Mirror tags: $mirror_tags"
+          mirror_tags=$(git tag -l | tr '\n' ' ')
           echo "mirror_tags=$mirror_tags" >> $GITHUB_ENV
 
-      # Step 4: Check if New Release Exists in Mirror Repo and Set `new_release`
+      # Step 4: Check if New Release Exists in Mirror Repo
       - name: Check if New Release Exists in Mirror Repo
         id: check_new_release
         run: |
           if [[ " ${mirror_tags[@]} " =~ " ${latest_tag} " ]]; then
-            echo "Tag $latest_tag already exists in the mirror repo. No new release."
-            echo "new_release=0" >> $GITHUB_ENV  # No new release
+            echo "Tag $latest_tag already exists in the mirror repo."
+            echo "new_release=0" >> $GITHUB_ENV
           else
             echo "New tag detected: $latest_tag"
-            echo "new_release=${latest_tag}" >> $GITHUB_ENV  # Set new release to latest_tag
+            echo "new_release=${latest_tag}" >> $GITHUB_ENV
           fi
 
-      # Step 5: Sync with PetTracker and update mirror repo if new release
+      # Step 5: Sync with PetTracker if new release
       - name: Sync Changes from PetTracker
-        if: ${{ env.new_release != '0' }}  # Run if there's a new release
+        if: ${{ env.new_release != '0' }}
         run: |
           cd pettracker-mirror
           git clone https://github.com/Jaliborc/PetTracker.git PetTracker
           cd PetTracker
           git fetch origin --prune
-          git reset --hard origin/master  # Sync with the source's 'master' branch
+          git reset --hard origin/master
 
           # Preserve `.github/workflows/mirror.yml`
           git checkout origin/master -- ':!**/.github/workflows/mirror.yml'
 
       # Step 6: Push to Mirror Repo if new release
       - name: Push to Mirror Repo
-        if: ${{ env.new_release != '0' }}  # Run if there's a new release
+        if: ${{ env.new_release != '0' }}
         run: |
           cd pettracker-mirror
           git diff --exit-code || (git add . && git commit -m "Update from source repo" && git push origin master --force)
-
+      
       # Step 7: Check if there are no releases on the mirror repo
       - name: Check if Mirror Repo Has No Releases
         id: check_no_releases
@@ -89,26 +83,16 @@ jobs:
             echo "new_release=${{ env.latest_tag }}" >> $GITHUB_ENV  # Set new_release to the first tag
           fi
 
-      # Step 8: Create GitHub Release for the Latest Tag with Excluded GitHub Files
-      - name: Create GitHub Release for the Latest Tag with Excluded GitHub Files
-        if: ${{ env.new_release != '0' }}  # Run if there's a new release
+      # Step 8: Create GitHub Release for the Latest Tag
+      - name: Create GitHub Release for the Latest Tag
+        if: ${{ env.new_release != '0' }}
         run: |
-          echo "Checking if release for tag ${{ env.new_release }} already exists"
-      
-          # Check if the release already exists using GitHub CLI
-          release_exists=$(gh release list --repo andi-74/pettracker-mirror --json tagName --jq ".[] | select(.tagName == \"${{ env.new_release }}\")")
-      
-          if [ -z "$release_exists" ]; then
-            echo "Creating release for tag ${{ env.new_release }}"
-      
-            # Create an archive, excluding .github files and flattening the directory structure
-            echo "Creating archive excluding .github files"
-            cd pettracker-mirror
-            git archive --format zip --output "/tmp/pettracker-${{ env.new_release }}.zip" --prefix="pettracker/" HEAD $(git diff --name-only HEAD $(git merge-base HEAD origin/master) | grep -v ".github")
-      
-            # Log in with GitHub token provided by GitHub Actions and create the release
-            gh auth login --with-token
-            gh release create "${{ env.new_release }}" --title "Release ${{ env.new_release }}" --notes "Release for tag ${{ env.new_release }}" --repo andi-74/pettracker-mirror /tmp/pettracker-${{ env.new_release }}.zip
-          else
-            echo "Release for tag ${{ env.new_release }} already exists. Skipping release creation."
-          fi
+          echo "Creating release for tag ${{ env.new_release }}"
+
+          # Exclude `.github` files and create a flat zip structure
+          cd pettracker-mirror
+          git archive --format zip --output "/tmp/pettracker-${{ env.new_release }}.zip" --prefix="pettracker/" HEAD $(git diff --name-only HEAD $(git merge-base HEAD origin/master) | grep -v ".github")
+
+          # Use GitHub CLI with the GITHUB_TOKEN
+          gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
+          gh release create "${{ env.new_release }}" --title "Release ${{ env.new_release }}" --notes "Release for tag ${{ env.new_release }}" --repo andi-74/pettracker-mirror /tmp/pettracker-${{ env.new_release }}.zip
