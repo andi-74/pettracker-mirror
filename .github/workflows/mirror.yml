@@ -92,10 +92,10 @@ jobs:
         run: |
           echo "Checking if release for tag ${{ env.new_release }} already exists"
           
-          # Set the GitHub token as an environment variable
-          export GH_TOKEN=${{ secrets.GITHUB_TOKEN }}
+          # Remove any existing GH_TOKEN from environment to avoid conflicts
+          unset GH_TOKEN
       
-          # Get list of releases and check if the tag already exists
+          # Check if the release already exists using GitHub CLI
           release_exists=$(gh release list --repo andi-74/pettracker-mirror --json tagName --jq ".[] | select(.tagName == \"${{ env.new_release }}\")")
       
           if [ -z "$release_exists" ]; then
@@ -106,7 +106,7 @@ jobs:
             cd pettracker-mirror
             git archive --format zip --output "/tmp/pettracker-${{ env.new_release }}.zip" --prefix="pettracker/" HEAD $(git diff --name-only HEAD $(git merge-base HEAD origin/master) | grep -v ".github")
       
-            # Create the GitHub release and upload the custom archive
+            # Log in with GitHub token provided by GitHub Actions and create the release
             gh auth login --with-token
             gh release create "${{ env.new_release }}" --title "Release ${{ env.new_release }}" --notes "Release for tag ${{ env.new_release }}" --repo andi-74/pettracker-mirror /tmp/pettracker-${{ env.new_release }}.zip
           else
