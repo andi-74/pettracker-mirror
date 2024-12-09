@@ -88,11 +88,17 @@ jobs:
         if: ${{ env.new_release != '0' }}
         run: |
           echo "Creating release for tag ${{ env.new_release }}"
-
-          # Exclude `.github` files and create a flat zip structure
+      
+          # Create an archive including only the specified folders and files
           cd pettracker-mirror
-          git archive --format zip --output "/tmp/pettracker-${{ env.new_release }}.zip" --prefix="pettracker/" HEAD $(git diff --name-only HEAD $(git merge-base HEAD origin/master) | grep -v ".github")
-
+          zip -r "/tmp/pettracker-${{ env.new_release }}.zip" \
+            addons art libs localization PetTracker-Mainline.toc \
+            -x "*/.github/*"
+      
           # Use GitHub CLI with the GITHUB_TOKEN
           gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
-          gh release create "${{ env.new_release }}" --title "Release ${{ env.new_release }}" --notes "Release for tag ${{ env.new_release }}" --repo andi-74/pettracker-mirror /tmp/pettracker-${{ env.new_release }}.zip
+          gh release create "${{ env.new_release }}" \
+            --title "Release ${{ env.new_release }}" \
+            --notes "Release for tag ${{ env.new_release }}" \
+            --repo andi-74/pettracker-mirror \
+            /tmp/pettracker-${{ env.new_release }}.zip
