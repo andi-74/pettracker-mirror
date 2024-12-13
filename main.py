@@ -6,7 +6,7 @@ import cloudscraper
 from bs4 import BeautifulSoup as Soup
 from requests.adapters import Retry
 
-cf_mirror_addon_name = "PetTracker"
+cf_mirror_addon_name = "Enter Addon Name Here For Local Testing"
 cf_mirror_addon_id = "0"
 
 handler = logging.StreamHandler(sys.stdout)
